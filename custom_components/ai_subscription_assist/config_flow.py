@@ -10,6 +10,7 @@ import logging
 import re
 import secrets
 import time
+from collections.abc import Mapping
 from typing import Any, cast
 from urllib.parse import urlencode
 
@@ -20,6 +21,7 @@ from voluptuous_openapi import convert
 
 from homeassistant.components.zone import ENTITY_ID_HOME
 from homeassistant.config_entries import (
+    SOURCE_REAUTH,
     ConfigEntry,
     ConfigEntryState,
     ConfigFlow,
@@ -475,6 +477,34 @@ class AiSubscriptionAssistConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return await self.async_step_claude_oauth(user_input)
 
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Handle reauthentication triggered by a failed token refresh.
+
+        HA calls this automatically when async_setup_entry (or the
+        periodic refresh, via entry.async_start_reauth) raises
+        ConfigEntryAuthFailed — e.g. the Claude refresh token was
+        rejected (revoked or already rotated/consumed).
+        """
+        self._provider = entry_data.get(CONF_PROVIDER, PROVIDER_CLAUDE_OAUTH)
+        self._code_verifier = None
+        self._state = None
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Confirm reauthentication, then redo the Claude OAuth handshake.
+
+        Only the OAuth provider (Claude subscription) currently has a
+        working refresh cycle in this fork, so reauth only needs to
+        support that path today.
+        """
+        if self._provider != PROVIDER_CLAUDE_OAUTH:
+            return self.async_abort(reason="reauth_unsupported_provider")
+        return await self.async_step_claude_oauth(user_input)
+
     async def async_step_claude_oauth(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -554,6 +584,22 @@ class AiSubscriptionAssistConfigFlow(ConfigFlow, domain=DOMAIN):
                         "OAuth token exchange successful, access token prefix: %s...",
                         access_token[:20] if access_token else "none",
                     )
+
+                    if self.source == SOURCE_REAUTH:
+                        # Reauth of an existing entry: replace only the
+                        # tokens. Subentries (conversation agents) and
+                        # options (memory settings, etc.) are untouched.
+                        reauth_entry = self._get_reauth_entry()
+                        return self.async_update_reload_and_abort(
+                            reauth_entry,
+                            data={
+                                **reauth_entry.data,
+                                CONF_PROVIDER: PROVIDER_CLAUDE_OAUTH,
+                                CONF_ACCESS_TOKEN: access_token,
+                                CONF_REFRESH_TOKEN: refresh_token,
+                                CONF_EXPIRES_AT: expires_at,
+                            },
+                        )
 
                     return self.async_create_entry(
                         title=entry_title,

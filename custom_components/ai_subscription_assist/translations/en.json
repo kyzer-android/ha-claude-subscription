@@ -60,7 +60,7 @@
           "memory_ttl_days": "Memory retention (days)",
           "memory_max_items_per_scope": "Max memories per scope",
           "memory_recall_top_k": "Max recalled memories per turn",
-          "memory_resume_max_messages": "Max resume messages",
+          "memory_resume_max_messages": "Max session history size",
           "memory_record_enabled": "Record session history"
         },
         "data_description": {
@@ -70,7 +70,7 @@
           "memory_ttl_days": "Automatically expire memories older than this many days.",
           "memory_max_items_per_scope": "Cap memory items for each scope (shared and each user).",
           "memory_recall_top_k": "Maximum number of memory items injected per turn.",
-          "memory_resume_max_messages": "Maximum number of user/assistant messages kept for resumable context.",
+          "memory_resume_max_messages": "Maximum number of user/assistant messages kept per session in the history panel.",
           "memory_record_enabled": "Save each turn to the Sessions history shown in the Memory Manager panel, independent of whether that history is auto-injected on resume."
         }
       }

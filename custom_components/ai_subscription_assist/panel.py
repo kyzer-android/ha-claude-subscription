@@ -22,16 +22,17 @@ from .const import (
 )
 
 
-async def async_setup_memory_panel(hass: HomeAssistant) -> None:
-    """Register the memory/session management panel."""
-    domain_data = hass.data.setdefault(DOMAIN, {})
-    if domain_data.get(DATA_MEMORY_PANEL_REGISTERED):
-        return
+def _cleanup_stale_gz_and_get_cache_bust(static_dir: Path) -> str | None:
+    """Remove stale pre-compressed panel assets and compute a cache-bust token.
 
-    static_dir = Path(__file__).parent / "frontend"
+    Runs entirely in the executor thread pool — every call here is
+    synchronous filesystem I/O (glob, unlink, stat) and must never run
+    directly on the event loop. Returns None if the frontend directory
+    is missing (caller must not touch the filesystem again to check).
+    """
     if not static_dir.exists():
         LOGGER.warning("Panel frontend directory missing: %s", static_dir)
-        return
+        return None
 
     # Guard against stale pre-compressed siblings (e.g. a leftover
     # ai-subscription-assist-memory-panel.js.gz from a previous install).
@@ -47,16 +48,37 @@ async def async_setup_memory_panel(hass: HomeAssistant) -> None:
         except OSError as err:
             LOGGER.warning("Could not remove stale panel asset %s: %s", stale_gz, err)
 
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(PANEL_STATIC_BASE_URL, str(static_dir), False)]
-    )
-
     # Cache-bust the module URL with the JS file's mtime so browsers (and
     # any caching reverse proxy) always fetch the latest version after an
     # HA restart, instead of silently keeping a stale cached copy under
     # the same static URL.
     js_file = static_dir / "ai-subscription-assist-memory-panel.js"
-    cache_bust = str(int(js_file.stat().st_mtime)) if js_file.exists() else "0"
+    return str(int(js_file.stat().st_mtime)) if js_file.exists() else "0"
+
+
+async def async_setup_memory_panel(hass: HomeAssistant) -> None:
+    """Register the memory/session management panel."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get(DATA_MEMORY_PANEL_REGISTERED):
+        return
+
+    static_dir = Path(__file__).parent / "frontend"
+
+    # All filesystem I/O (glob/unlink/stat) happens off the event loop —
+    # doing it inline here was flagged by Home Assistant's blocking-call
+    # detector and could prevent the integration from finishing setup.
+    cache_bust = await hass.async_add_executor_job(
+        _cleanup_stale_gz_and_get_cache_bust, static_dir
+    )
+
+    if cache_bust is None:
+        # _cleanup_stale_gz_and_get_cache_bust already logged the warning.
+        return
+
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(PANEL_STATIC_BASE_URL, str(static_dir), False)]
+    )
+
     module_url = f"{PANEL_MODULE_URL}?v={cache_bust}"
 
     panel_kwargs = {
