@@ -25,7 +25,7 @@ Ce document ne couvre que ce qui a été **ajouté ou modifié** par rapport à 
 
 Clique sur le badge ci-dessous depuis un navigateur sur le même réseau que ton instance HA (ou avec Remote UI configuré). Il ouvre directement HACS et pré-remplit l'ajout de ce dépôt comme intégration personnalisée :
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=kyzer-android&repository=kyzer-android/ha-claude-subscription&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=kyzer-android&repository=ha-claude-subscription&category=integration)
 
 1. Clique sur le badge → HACS s'ouvre sur l'écran d'ajout de dépôt personnalisé, déjà pré-rempli.
 2. Vérifie que la catégorie est bien **Integration**, puis valide.
