@@ -1,0 +1,179 @@
+{
+  "config": {
+    "error": {
+      "authentication_error": "Invalid authentication. Please re-authenticate.",
+      "cannot_connect": "Failed to connect to the provider.",
+      "timeout_connect": "Timeout trying to connect to the provider.",
+      "unknown": "Unexpected error occurred.",
+      "no_auth_code": "Please enter the authorization code from the callback URL.",
+      "invalid_state": "OAuth state mismatch. Please start over and try again.",
+      "flow_expired": "Setup session expired. Please start over and try again.",
+      "google_project_required": "This Google account requires a Cloud project ID. Set a project and re-authenticate.",
+      "token_exchange_failed": "Failed to exchange authorization code for tokens. The code may have expired — please try again."
+    },
+    "step": {
+      "claude_oauth": {
+        "title": "Authenticate with Claude Pro / Claude Max",
+        "description": "Sign in with your Claude **Pro** or **Max** account (or an eligible **Team/Enterprise** seat) to authorize Home Assistant.\n\n1. [Click here to authenticate]({auth_url})\n2. Sign in and authorize the app\n3. After authorizing, you'll see a page with your authorization code\n4. Copy and paste the code below\n\n**Redirect URI:** `{redirect_uri}`",
+        "data": {
+          "name": "Name",
+          "auth_code": "Authorization code"
+        }
+      },
+      "openai": {
+        "title": "Configure OpenAI / compatible",
+        "description": "Enter an API key for OpenAI (or an OpenAI-compatible server) and optionally override the base URL.",
+        "data": {
+          "name": "Name",
+          "openai_api_key": "API key",
+          "openai_base_url": "Base URL"
+        }
+      },
+      "openai_codex": {
+        "title": "Authenticate with ChatGPT Plus / Pro for Codex",
+        "description": "Sign in with your **ChatGPT Plus**, **ChatGPT Pro**, **ChatGPT Business**, or **ChatGPT Enterprise** account to authorize Home Assistant for Codex.\n\n1. [Click here to authenticate]({auth_url})\n2. Sign in and authorize\n3. You'll be redirected to a localhost URL that may not load\n4. Copy and paste the full redirect URL (or just the `code=` value)\n\n**Redirect URI:** `{redirect_uri}`",
+        "data": {
+          "name": "Name",
+          "auth_code": "Redirect URL or code"
+        }
+      },
+      "gemini_cli": {
+        "title": "Authenticate with Google AI Pro",
+        "description": "Sign in with your Google account to authorize **Google AI Pro**, which includes **Gemini Code Assist** and **Gemini CLI**.\n\n1. [Click here to authenticate]({auth_url})\n2. Sign in and consent\n3. You'll be redirected to a localhost URL that may not load\n4. Copy and paste the full redirect URL\n\n**Redirect URI:** `{redirect_uri}`",
+        "data": {
+          "name": "Name",
+          "google_project_id": "Google Cloud project ID (optional)",
+          "auth_code": "Redirect URL"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Memory settings",
+        "description": "Configure service-level memory behavior shared by all conversation agents in this provider entry.\n\nMemory panel:\n- Sidebar item: `AI Assist Memory`\n- Route: `/ai-subscription-assist-memory`\n\nMemory slash commands (use in Assist chat):\n- `/memory help`\n- `/memory status`\n- `/memory add [--shared] [text]` (alias: `/remember`)\n- `/memory list [mine|shared|all] [--limit N]`\n- `/memory search [query] [--limit N]` (alias: `/memories`)\n- `/memory delete [memory_id]` (alias: `/forget`)\n- `/memory clear mine|shared|all --confirm`\n- `/memory sessions [mine|all] [--limit N]` (alias: `/sessions`)\n- `/memory sessions show [session_id] [--limit N]`\n- `/memory sessions clear [session_id|mine|all] --confirm`\n- `/new` or `/reset` to clear resumable context and start fresh\n\nAddon services for memory/session management:\n- `ai_subscription_assist.memory_status`\n- `ai_subscription_assist.memory_list`\n- `ai_subscription_assist.memory_delete`\n- `ai_subscription_assist.memory_clear`\n- `ai_subscription_assist.session_list`\n- `ai_subscription_assist.session_get`\n- `ai_subscription_assist.session_clear`\n\nFor Home Assistant timeline/history questions, enable these agent tools:\n`get_history`, `get_logbook`, `get_statistics`",
+        "data": {
+          "memory_enabled": "Enable memory",
+          "memory_auto_write": "Auto-capture explicit memory hints",
+          "memory_auto_recall": "Auto-recall memory in prompts",
+          "memory_ttl_days": "Memory retention (days)",
+          "memory_max_items_per_scope": "Max memories per scope",
+          "memory_recall_top_k": "Max recalled memories per turn",
+          "memory_resume_max_messages": "Max resume messages",
+          "memory_record_enabled": "Record session history"
+        },
+        "data_description": {
+          "memory_enabled": "Master switch for long-term memory and slash memory commands.",
+          "memory_auto_write": "Capture explicit phrases like 'remember that ...' into per-user memory.",
+          "memory_auto_recall": "Inject relevant memory snippets into the system prompt for normal chat turns.",
+          "memory_ttl_days": "Automatically expire memories older than this many days.",
+          "memory_max_items_per_scope": "Cap memory items for each scope (shared and each user).",
+          "memory_recall_top_k": "Maximum number of memory items injected per turn.",
+          "memory_resume_max_messages": "Maximum number of user/assistant messages kept for resumable context.",
+          "memory_record_enabled": "Save each turn to the Sessions history shown in the Memory Manager panel, independent of whether that history is auto-injected on resume."
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "conversation": {
+      "abort": {
+        "entry_not_loaded": "Cannot add things while the configuration is disabled.",
+        "reconfigure_successful": "Options updated successfully."
+      },
+      "entry_type": "Conversation agent",
+      "initiate_flow": {
+        "reconfigure": "Reconfigure conversation agent",
+        "user": "Add conversation agent"
+      },
+      "step": {
+        "advanced": {
+          "data": {
+            "chat_model": "Model",
+            "max_tokens": "Maximum tokens to return in response",
+            "temperature": "Temperature"
+          },
+          "title": "Advanced settings"
+        },
+        "init": {
+          "description": "Configure this agent's model and tool access.\n\nFor timeline/history analysis in chat, enable `get_history`, `get_logbook`, and `get_statistics` in **Enabled custom tools**.\nMemory slash commands are configured at the integration level (Integration → Configure).",
+          "data": {
+            "enabled_tools": "Enabled custom tools",
+            "llm_hass_api": "Control Home Assistant",
+            "name": "Name",
+            "prompt": "Instructions",
+            "recommended": "Recommended model settings",
+            "yolo_mode": "YOLO mode (unsafe)"
+          },
+          "data_description": {
+            "enabled_tools": "Choose which extra AI Subscription Assist tools this agent can call.",
+            "prompt": "Instruct how the LLM should respond. This can be a template.",
+            "yolo_mode": "Disables exposure safeguards and unlocks privileged tools (dashboard/automation edits, log access). Use only for trusted agents."
+          },
+          "title": "Basic settings"
+        },
+        "model": {
+          "data": {
+            "thinking_budget": "Thinking budget",
+            "thinking_effort": "Thinking effort",
+            "user_location": "Include home location",
+            "web_search": "Enable web search",
+            "web_search_max_uses": "Maximum web searches"
+          },
+          "data_description": {
+            "thinking_budget": "The number of tokens the model can use to think about the response out of the total maximum number of tokens. Set to 1024 or greater to enable extended thinking.",
+            "thinking_effort": "Control how many tokens Claude uses when responding, trading off between response thoroughness and token efficiency",
+            "user_location": "Localize search results based on home location",
+            "web_search": "The web search tool gives Claude direct access to real-time web content, allowing it to answer questions with up-to-date information beyond its knowledge cutoff",
+            "web_search_max_uses": "Limit the number of searches performed per response"
+          },
+          "title": "Model-specific options"
+        }
+      }
+    }
+  },
+  "selector": {
+    "thinking_effort": {
+      "options": {
+        "high": "High",
+        "low": "Low",
+        "max": "Max",
+        "medium": "Medium",
+        "none": "None"
+      }
+    }
+  },
+  "exceptions": {
+    "quota_exceeded": {
+      "message": "Out of credit."
+    },
+    "claude_auth_expired": {
+      "message": "Claude authentication expired. Please reconnect the Claude service in the integration settings."
+    },
+    "claude_permission_denied": {
+      "message": "Claude denied access for this request."
+    },
+    "claude_not_found": {
+      "message": "Claude model or resource not found."
+    },
+    "claude_bad_request": {
+      "message": "Invalid request sent to Claude."
+    },
+    "claude_timeout": {
+      "message": "Claude took too long to respond (timed out)."
+    },
+    "claude_connection_error": {
+      "message": "Could not reach Claude — check the server's internet connection."
+    },
+    "claude_internal_error": {
+      "message": "Internal error on Claude's side. Please try again in a moment."
+    },
+    "claude_api_error": {
+      "message": "Claude error (HTTP {status})."
+    },
+    "claude_unexpected_error": {
+      "message": "Unexpected error with Claude."
+    }
+  }
+}

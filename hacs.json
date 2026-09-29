@@ -1,0 +1,9 @@
+{
+  "name": "AI Subscription Assist (fork FR)",
+  "documentation": "https://github.com/kyzer-android/ai-subscription-assist-fr",
+  "issue_tracker": "https://github.com/kyzer-android/ai-subscription-assist-fr/issues",
+  "domains": ["ai_subscription_assist"],
+  "iot_class": "cloud_polling",
+  "homeassistant": "2026.2.2",
+  "render_readme": true
+}

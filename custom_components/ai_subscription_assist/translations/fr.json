@@ -1,0 +1,179 @@
+{
+  "config": {
+    "error": {
+      "authentication_error": "Authentification invalide. Veuillez vous réauthentifier.",
+      "cannot_connect": "Échec de la connexion au fournisseur.",
+      "timeout_connect": "Délai d'attente dépassé lors de la connexion au fournisseur.",
+      "unknown": "Une erreur inattendue s'est produite.",
+      "no_auth_code": "Veuillez saisir le code d'autorisation présent dans l'URL de retour.",
+      "invalid_state": "Incohérence de l'état OAuth. Veuillez recommencer la procédure.",
+      "flow_expired": "La session de configuration a expiré. Veuillez recommencer la procédure.",
+      "google_project_required": "Ce compte Google nécessite un identifiant de projet Cloud. Définissez un projet puis réauthentifiez-vous.",
+      "token_exchange_failed": "Échec de l'échange du code d'autorisation contre les jetons. Le code a peut-être expiré — veuillez réessayer."
+    },
+    "step": {
+      "claude_oauth": {
+        "title": "S'authentifier avec Claude Pro / Claude Max",
+        "description": "Connectez-vous avec votre compte Claude **Pro** ou **Max** (ou un accès **Team/Enterprise** éligible) pour autoriser Home Assistant.\n\n1. [Cliquez ici pour vous authentifier]({auth_url})\n2. Connectez-vous et autorisez l'application\n3. Après autorisation, une page affichera votre code d'autorisation\n4. Copiez-collez ce code ci-dessous\n\n**URI de redirection :** `{redirect_uri}`",
+        "data": {
+          "name": "Nom",
+          "auth_code": "Code d'autorisation"
+        }
+      },
+      "openai": {
+        "title": "Configurer OpenAI / compatible",
+        "description": "Saisissez une clé API pour OpenAI (ou un serveur compatible OpenAI) et, si besoin, remplacez l'URL de base.",
+        "data": {
+          "name": "Nom",
+          "openai_api_key": "Clé API",
+          "openai_base_url": "URL de base"
+        }
+      },
+      "openai_codex": {
+        "title": "S'authentifier avec ChatGPT Plus / Pro pour Codex",
+        "description": "Connectez-vous avec votre compte **ChatGPT Plus**, **ChatGPT Pro**, **ChatGPT Business** ou **ChatGPT Enterprise** pour autoriser Home Assistant à utiliser Codex.\n\n1. [Cliquez ici pour vous authentifier]({auth_url})\n2. Connectez-vous et autorisez l'accès\n3. Vous serez redirigé vers une URL localhost qui peut ne pas se charger\n4. Copiez-collez l'URL de redirection complète (ou juste la valeur `code=`)\n\n**URI de redirection :** `{redirect_uri}`",
+        "data": {
+          "name": "Nom",
+          "auth_code": "URL de redirection ou code"
+        }
+      },
+      "gemini_cli": {
+        "title": "S'authentifier avec Google AI Pro",
+        "description": "Connectez-vous avec votre compte Google pour autoriser **Google AI Pro**, qui inclut **Gemini Code Assist** et **Gemini CLI**.\n\n1. [Cliquez ici pour vous authentifier]({auth_url})\n2. Connectez-vous et donnez votre consentement\n3. Vous serez redirigé vers une URL localhost qui peut ne pas se charger\n4. Copiez-collez l'URL de redirection complète\n\n**URI de redirection :** `{redirect_uri}`",
+        "data": {
+          "name": "Nom",
+          "google_project_id": "Identifiant de projet Google Cloud (optionnel)",
+          "auth_code": "URL de redirection"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Réglages de mémoire",
+        "description": "Configurez le comportement de mémoire au niveau du service, partagé par tous les agents de conversation de cette entrée fournisseur.\n\nPanel mémoire :\n- Élément du menu latéral : `AI Assist Memory`\n- Route : `/ai-subscription-assist-memory`\n\nCommandes slash mémoire (à utiliser dans le chat Assist) :\n- `/memory help`\n- `/memory status`\n- `/memory add [--shared] [texte]` (alias : `/remember`)\n- `/memory list [mine|shared|all] [--limit N]`\n- `/memory search [requête] [--limit N]` (alias : `/memories`)\n- `/memory delete [memory_id]` (alias : `/forget`)\n- `/memory clear mine|shared|all --confirm`\n- `/memory sessions [mine|all] [--limit N]` (alias : `/sessions`)\n- `/memory sessions show [session_id] [--limit N]`\n- `/memory sessions clear [session_id|mine|all] --confirm`\n- `/new` ou `/reset` pour effacer le contexte reprenable et repartir de zéro\n\nServices du module pour la gestion mémoire/sessions :\n- `ai_subscription_assist.memory_status`\n- `ai_subscription_assist.memory_list`\n- `ai_subscription_assist.memory_delete`\n- `ai_subscription_assist.memory_clear`\n- `ai_subscription_assist.session_list`\n- `ai_subscription_assist.session_get`\n- `ai_subscription_assist.session_clear`\n\nPour les questions sur la chronologie/l'historique Home Assistant, activez ces outils d'agent :\n`get_history`, `get_logbook`, `get_statistics`",
+        "data": {
+          "memory_enabled": "Activer la mémoire",
+          "memory_auto_write": "Capture automatique des indices de mémoire explicites",
+          "memory_auto_recall": "Rappel automatique de la mémoire dans les prompts",
+          "memory_ttl_days": "Rétention de la mémoire (jours)",
+          "memory_max_items_per_scope": "Nombre max. de souvenirs par portée",
+          "memory_recall_top_k": "Nombre max. de souvenirs rappelés par tour",
+          "memory_resume_max_messages": "Nombre max. de messages de reprise",
+          "memory_record_enabled": "Historiser les sessions"
+        },
+        "data_description": {
+          "memory_enabled": "Interrupteur principal pour la mémoire longue durée et les commandes slash mémoire.",
+          "memory_auto_write": "Capture les phrases explicites du type « retiens que... » dans la mémoire propre à chaque utilisateur.",
+          "memory_auto_recall": "Injecte des extraits de mémoire pertinents dans le prompt système pour les tours de conversation normaux.",
+          "memory_ttl_days": "Fait expirer automatiquement les souvenirs plus anciens que ce nombre de jours.",
+          "memory_max_items_per_scope": "Plafonne le nombre d'éléments de mémoire pour chaque portée (partagée et par utilisateur).",
+          "memory_recall_top_k": "Nombre maximum d'éléments de mémoire injectés par tour.",
+          "memory_resume_max_messages": "Nombre maximum de messages utilisateur/assistant conservés pour le contexte reprenable.",
+          "memory_record_enabled": "Enregistre chaque tour dans l'historique des sessions affiché dans le panel Memory Manager, indépendamment du fait que cet historique soit réinjecté automatiquement à la reprise."
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "conversation": {
+      "abort": {
+        "entry_not_loaded": "Impossible d'ajouter des éléments tant que la configuration est désactivée.",
+        "reconfigure_successful": "Options mises à jour avec succès."
+      },
+      "entry_type": "Agent de conversation",
+      "initiate_flow": {
+        "reconfigure": "Reconfigurer l'agent de conversation",
+        "user": "Ajouter un agent de conversation"
+      },
+      "step": {
+        "advanced": {
+          "data": {
+            "chat_model": "Modèle",
+            "max_tokens": "Nombre maximum de jetons à renvoyer dans la réponse",
+            "temperature": "Température"
+          },
+          "title": "Réglages avancés"
+        },
+        "init": {
+          "description": "Configurez le modèle et l'accès aux outils de cet agent.\n\nPour l'analyse de la chronologie/l'historique dans le chat, activez `get_history`, `get_logbook` et `get_statistics` dans **Outils personnalisés activés**.\nLes commandes slash mémoire se configurent au niveau de l'intégration (Intégration → Configurer).",
+          "data": {
+            "enabled_tools": "Outils personnalisés activés",
+            "llm_hass_api": "Contrôler Home Assistant",
+            "name": "Nom",
+            "prompt": "Instructions",
+            "recommended": "Réglages de modèle recommandés",
+            "yolo_mode": "Mode YOLO (non sécurisé)"
+          },
+          "data_description": {
+            "enabled_tools": "Choisissez les outils AI Subscription Assist supplémentaires que cet agent peut appeler.",
+            "prompt": "Indique comment le LLM doit répondre. Peut être un modèle (template).",
+            "yolo_mode": "Désactive les garde-fous d'exposition et débloque des outils privilégiés (modification de tableaux de bord/automatisations, accès aux journaux). À utiliser uniquement pour des agents de confiance."
+          },
+          "title": "Réglages de base"
+        },
+        "model": {
+          "data": {
+            "thinking_budget": "Budget de réflexion",
+            "thinking_effort": "Effort de réflexion",
+            "user_location": "Inclure la localisation du domicile",
+            "web_search": "Activer la recherche web",
+            "web_search_max_uses": "Nombre maximum de recherches web"
+          },
+          "data_description": {
+            "thinking_budget": "Le nombre de jetons que le modèle peut utiliser pour réfléchir à sa réponse, sur le total maximum de jetons. Définissez 1024 ou plus pour activer la réflexion étendue.",
+            "thinking_effort": "Contrôle le nombre de jetons utilisés par Claude pour répondre, en arbitrant entre exhaustivité de la réponse et efficacité en jetons.",
+            "user_location": "Localise les résultats de recherche en fonction de la position du domicile.",
+            "web_search": "L'outil de recherche web donne à Claude un accès direct au contenu web en temps réel, lui permettant de répondre avec des informations à jour au-delà de sa date de coupure de connaissances.",
+            "web_search_max_uses": "Limite le nombre de recherches effectuées par réponse."
+          },
+          "title": "Options spécifiques au modèle"
+        }
+      }
+    }
+  },
+  "selector": {
+    "thinking_effort": {
+      "options": {
+        "high": "Élevé",
+        "low": "Faible",
+        "max": "Maximum",
+        "medium": "Moyen",
+        "none": "Aucun"
+      }
+    }
+  },
+  "exceptions": {
+    "quota_exceeded": {
+      "message": "Plus de crédit."
+    },
+    "claude_auth_expired": {
+      "message": "Authentification Claude expirée. Reconnecte le service Claude dans les paramètres de l'intégration."
+    },
+    "claude_permission_denied": {
+      "message": "Accès refusé par Claude pour cette requête."
+    },
+    "claude_not_found": {
+      "message": "Modèle ou ressource Claude introuvable."
+    },
+    "claude_bad_request": {
+      "message": "Requête invalide envoyée à Claude."
+    },
+    "claude_timeout": {
+      "message": "Claude met trop de temps à répondre (délai dépassé)."
+    },
+    "claude_connection_error": {
+      "message": "Impossible de joindre Claude, vérifie la connexion internet du serveur."
+    },
+    "claude_internal_error": {
+      "message": "Erreur interne côté Claude. Réessaie dans un instant."
+    },
+    "claude_api_error": {
+      "message": "Erreur Claude (HTTP {status})."
+    },
+    "claude_unexpected_error": {
+      "message": "Erreur inattendue avec Claude."
+    }
+  }
+}
