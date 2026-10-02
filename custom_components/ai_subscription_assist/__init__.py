@@ -14,7 +14,7 @@ import httpx
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_LLM_HASS_API, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.httpx_client import get_async_client
@@ -155,12 +155,20 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def _async_refresh_token(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
     """Refresh the Anthropic OAuth access token (Claude subscription OAuth).
 
-    Returns the new access token, or None on failure.
+    Returns the new access token, or None on a transient failure (network
+    error, timeout, server-side 5xx) — the caller may retry later.
+
+    Raises:
+        ConfigEntryAuthFailed: if the refresh token itself was rejected
+            (400/401/403 — revoked, expired, or already rotated/consumed).
+            This is never fixed by retrying; only a fresh OAuth login can
+            fix it, so callers should let this propagate (or start a
+            reauth flow) instead of treating it like a transient error.
     """
     refresh_token = entry.data.get(CONF_REFRESH_TOKEN)
     if not refresh_token:
         LOGGER.error("No refresh token available for token refresh")
-        return None
+        raise ConfigEntryAuthFailed("No refresh token stored")
 
     try:
         async_client = get_async_client(hass)
@@ -175,6 +183,14 @@ async def _async_refresh_token(hass: HomeAssistant, entry: ConfigEntry) -> str |
         )
         response.raise_for_status()
         token_data = response.json()
+    except httpx.HTTPStatusError as err:
+        LOGGER.error("Failed to refresh token: %s", err)
+        if err.response.status_code in (400, 401, 403):
+            raise ConfigEntryAuthFailed(
+                "Claude refresh token rejected by Anthropic "
+                "(revoked, expired, or already used) — reauthentication required"
+            ) from err
+        return None
     except httpx.HTTPError as err:
         LOGGER.error("Failed to refresh token: %s", err)
         return None
@@ -552,7 +568,17 @@ async def async_setup_entry(
         # Set up periodic token refresh (Claude subscription OAuth only).
         async def _periodic_refresh(_now: datetime.datetime) -> None:
             """Periodically refresh the OAuth token."""
-            new_token = await _async_refresh_token(hass, entry)
+            try:
+                new_token = await _async_refresh_token(hass, entry)
+            except ConfigEntryAuthFailed:
+                # Not running inside async_setup_entry here, so HA won't
+                # catch this on its own — start the reauth flow explicitly.
+                LOGGER.warning(
+                    "Claude OAuth refresh token rejected during periodic "
+                    "refresh; starting reauthentication"
+                )
+                entry.async_start_reauth(hass)
+                return
             if new_token:
                 entry.runtime_data = _create_client(hass, new_token)
 

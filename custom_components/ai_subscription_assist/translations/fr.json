@@ -60,7 +60,7 @@
           "memory_ttl_days": "Rétention de la mémoire (jours)",
           "memory_max_items_per_scope": "Nombre max. de souvenirs par portée",
           "memory_recall_top_k": "Nombre max. de souvenirs rappelés par tour",
-          "memory_resume_max_messages": "Nombre max. de messages de reprise",
+          "memory_resume_max_messages": "Taille max. de l'historique par session",
           "memory_record_enabled": "Historiser les sessions"
         },
         "data_description": {
@@ -70,7 +70,7 @@
           "memory_ttl_days": "Fait expirer automatiquement les souvenirs plus anciens que ce nombre de jours.",
           "memory_max_items_per_scope": "Plafonne le nombre d'éléments de mémoire pour chaque portée (partagée et par utilisateur).",
           "memory_recall_top_k": "Nombre maximum d'éléments de mémoire injectés par tour.",
-          "memory_resume_max_messages": "Nombre maximum de messages utilisateur/assistant conservés pour le contexte reprenable.",
+          "memory_resume_max_messages": "Nombre maximum de messages utilisateur/assistant conservés par session dans le panel d'historique.",
           "memory_record_enabled": "Enregistre chaque tour dans l'historique des sessions affiché dans le panel Memory Manager, indépendamment du fait que cet historique soit réinjecté automatiquement à la reprise."
         }
       }

@@ -33,7 +33,6 @@ const STRINGS = {
     scope_mine: "Moi",
     scope_shared: "Partag\u00e9",
     scope_all: "Tout",
-    limit_label: "Limite :",
     target_user_label: "Utilisateur cible :",
     target_user_placeholder: "ID utilisateur optionnel",
     clear_scope: "Tout vider",
@@ -106,7 +105,6 @@ const STRINGS = {
     scope_mine: "Mine",
     scope_shared: "Shared",
     scope_all: "All",
-    limit_label: "Limit:",
     target_user_label: "Target user:",
     target_user_placeholder: "Optional user_id",
     clear_scope: "Clear All",
@@ -170,7 +168,7 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
       selectedEntryId: "",
       status: null,
       memoryScope: "all",
-      memoryLimit: 50,
+      memoryLimit: 200,
       memorySearch: "",
       memoryTargetUserId: "",
       addMemoryText: "",
@@ -191,7 +189,17 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
     if (!this._initialized) {
       this._initialized = true;
       this._bootstrap();
-    } else {
+      return;
+    }
+    // This panel never reads live entity state from `hass` — all its data
+    // comes from its own websocket calls (memory/session lists). The only
+    // thing the render actually depends on is the admin flag, so re-render
+    // only when that changes instead of on every hass update (which fires
+    // on any entity state change anywhere in the house, not just here, and
+    // was rebuilding the whole DOM — and stealing focus from any field the
+    // user had just clicked into — multiple times a second).
+    const isAdmin = this._isAdmin;
+    if (isAdmin !== this._lastRenderedIsAdmin) {
       this._render();
     }
   }
@@ -220,6 +228,46 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
   _setState(patch) {
     this._state = { ...this._state, ...patch };
     this._render();
+  }
+
+  // _render() rebuilds the whole shadow DOM from an innerHTML template on
+  // every call — including every time Home Assistant's `hass` setter fires,
+  // which happens on *any* entity state change anywhere, not just in this
+  // panel. Without this, clicking into a field focuses it only until the
+  // next ambient hass update rebuilds the DOM and replaces it with a fresh,
+  // unfocused node — the field appears to lose focus immediately.
+  _captureFocus() {
+    const active = this.shadowRoot?.activeElement;
+    if (!active || !active.id) {
+      return null;
+    }
+    const info = { id: active.id };
+    if (typeof active.selectionStart === "number") {
+      info.selectionStart = active.selectionStart;
+      info.selectionEnd = active.selectionEnd;
+    }
+    return info;
+  }
+
+  _restoreFocus(focusState) {
+    if (!focusState || !this.shadowRoot) {
+      return;
+    }
+    const el = this.shadowRoot.getElementById(focusState.id);
+    if (!el || typeof el.focus !== "function") {
+      return;
+    }
+    el.focus();
+    if (
+      typeof focusState.selectionStart === "number" &&
+      typeof el.setSelectionRange === "function"
+    ) {
+      try {
+        el.setSelectionRange(focusState.selectionStart, focusState.selectionEnd);
+      } catch (err) {
+        // Some input types (e.g. type="number") don't support selection ranges.
+      }
+    }
   }
 
   _setError(err) {
@@ -827,6 +875,8 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
     if (!this.shadowRoot) {
       return;
     }
+    this._lastRenderedIsAdmin = this._isAdmin;
+    const focusState = this._captureFocus();
     const entry = this._selectedEntry();
     const status = this._state.status;
     const memories = this._state.filteredMemories || [];
@@ -974,12 +1024,6 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
                         }>${this._t("scope_all")}</option>
                       </select>
                     </label>
-                    <label>
-                      ${this._t("limit_label")}
-                      <input id="memory-limit" type="number" min="1" max="500" value="${this._escape(
-                        this._state.memoryLimit
-                      )}">
-                    </label>
                     ${adminOnlyFields}
                     <button type="button" class="btn btn-outline" id="refresh-memory">${this._t("refresh")}</button>
                     <button type="button" class="btn btn-danger btn-outline" id="clear-memory">${this._t("clear_scope")}</button>
@@ -1067,12 +1111,6 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
                     <datalist id="session-subentry-options">
                       ${subentryOptions}
                     </datalist>
-                    <label>
-                      ${this._t("limit_label")}
-                      <input id="session-limit" type="number" min="1" max="500" value="${this._escape(
-                        this._state.sessionLimit
-                      )}">
-                    </label>
                     <button type="button" class="btn btn-outline" id="refresh-sessions">${this._t("refresh")}</button>
                     <button type="button" class="btn btn-danger btn-outline" id="clear-sessions">${this._t("clear_scope")}</button>
                   </div>
@@ -1135,7 +1173,8 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
                           <button type="button" class="btn btn-danger btn-outline btn-small" id="clear-selected-session">${this._t("clear_this_session")}</button>
                         </div>
                         <ul class="messages">
-                          ${(selectedSession.messages || [])
+                          ${[...(selectedSession.messages || [])]
+                            .reverse()
                             .map(
                               (message) => `
                                 <li class="msg">
@@ -1157,6 +1196,7 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
     `;
 
     this._bindEvents();
+    this._restoreFocus(focusState);
   }
 
   _bindEvents() {
@@ -1177,11 +1217,6 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
 
     root.getElementById("memory-scope")?.addEventListener("change", async (event) => {
       this._setState({ memoryScope: event.target.value });
-      await this._refreshMemories();
-    });
-
-    root.getElementById("memory-limit")?.addEventListener("change", async (event) => {
-      this._setState({ memoryLimit: Number(event.target.value) || 50 });
       await this._refreshMemories();
     });
 
@@ -1231,11 +1266,6 @@ class AiSubscriptionAssistMemoryPanel extends HTMLElement {
 
     root.getElementById("session-target-user")?.addEventListener("change", async (event) => {
       this._setState({ sessionTargetUserId: event.target.value, selectedSession: null });
-      await this._refreshSessions();
-    });
-
-    root.getElementById("session-limit")?.addEventListener("change", async (event) => {
-      this._setState({ sessionLimit: Number(event.target.value) || 50 });
       await this._refreshSessions();
     });
 
