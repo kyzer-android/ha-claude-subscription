@@ -172,3 +172,7 @@ def quota_signal(entry_id: str) -> str:
     """Return the dispatcher signal name for a config entry's quota sensor."""
     return f"{DOMAIN}_quota_state_{entry_id}"
 
+
+def status_signal(entry_id: str) -> str:
+    """Return the dispatcher signal name for a config entry's auth/error sensors."""
+    return f"{DOMAIN}_status_{entry_id}"

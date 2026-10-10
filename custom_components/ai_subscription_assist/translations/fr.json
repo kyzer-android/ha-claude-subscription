@@ -46,6 +46,11 @@
           "auth_code": "URL de redirection"
         }
       }
+    },
+    "abort": {
+      "reauth_successful": "Réauthentification réussie. La connexion à Claude a été mise à jour.",
+      "reconfigure_successful": "Connexion à Claude mise à jour avec succès.",
+      "reauth_unsupported_provider": "La réauthentification n'est prise en charge que pour le fournisseur Claude."
     }
   },
   "options": {
@@ -174,6 +179,40 @@
     },
     "claude_unexpected_error": {
       "message": "Erreur inattendue avec Claude."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "auth_state": {
+        "name": "Authentification",
+        "state": {
+          "ok": "Valide",
+          "refresh_failed": "Renouvellement refusé : réauthentification requise",
+          "rejected": "Jeton rejeté : réauthentification requise"
+        }
+      },
+      "last_error": {
+        "name": "Dernière erreur",
+        "state": {
+          "none": "Aucune",
+          "quota": "Quota atteint",
+          "auth": "Authentification refusée",
+          "permission": "Permission refusée",
+          "not_found": "Introuvable",
+          "bad_request": "Requête invalide",
+          "timeout": "Délai dépassé",
+          "connection": "Erreur de connexion",
+          "server": "Erreur du serveur Claude",
+          "api_error": "Erreur de l'API",
+          "unexpected": "Erreur inattendue",
+          "token_refresh": "Échec du renouvellement du jeton"
+        }
+      }
+    },
+    "button": {
+      "reauthenticate": {
+        "name": "Se réauthentifier"
+      }
     }
   }
 }

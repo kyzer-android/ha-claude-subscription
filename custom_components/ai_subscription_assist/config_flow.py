@@ -22,6 +22,7 @@ from voluptuous_openapi import convert
 from homeassistant.components.zone import ENTITY_ID_HOME
 from homeassistant.config_entries import (
     SOURCE_REAUTH,
+    SOURCE_RECONFIGURE,
     ConfigEntry,
     ConfigEntryState,
     ConfigFlow,
@@ -492,6 +493,24 @@ class AiSubscriptionAssistConfigFlow(ConfigFlow, domain=DOMAIN):
         self._state = None
         return await self.async_step_reauth_confirm()
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Let the user redo the Claude login on demand.
+
+        Shows up as "Reconfigure" in the integration's menu. It runs the
+        same OAuth handshake as reauth and only replaces the stored
+        tokens, so it can be used even when Home Assistant has not (yet)
+        noticed that the login is broken.
+        """
+        entry = self._get_reconfigure_entry()
+        self._provider = entry.data.get(CONF_PROVIDER, PROVIDER_CLAUDE_OAUTH)
+        if self._provider != PROVIDER_CLAUDE_OAUTH:
+            return self.async_abort(reason="reauth_unsupported_provider")
+        self._code_verifier = None
+        self._state = None
+        return await self.async_step_claude_oauth()
+
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -585,11 +604,17 @@ class AiSubscriptionAssistConfigFlow(ConfigFlow, domain=DOMAIN):
                         access_token[:20] if access_token else "none",
                     )
 
-                    if self.source == SOURCE_REAUTH:
-                        # Reauth of an existing entry: replace only the
-                        # tokens. Subentries (conversation agents) and
-                        # options (memory settings, etc.) are untouched.
-                        reauth_entry = self._get_reauth_entry()
+                    if self.source in (SOURCE_REAUTH, SOURCE_RECONFIGURE):
+                        # Reauth (started by HA or by the "Re-authenticate"
+                        # button) or manual reconfigure of an existing
+                        # entry: replace only the tokens. Subentries
+                        # (conversation agents) and options (memory
+                        # settings, etc.) are untouched.
+                        reauth_entry = (
+                            self._get_reauth_entry()
+                            if self.source == SOURCE_REAUTH
+                            else self._get_reconfigure_entry()
+                        )
                         return self.async_update_reload_and_abort(
                             reauth_entry,
                             data={

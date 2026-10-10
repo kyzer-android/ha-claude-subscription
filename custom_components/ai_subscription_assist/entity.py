@@ -125,6 +125,21 @@ from .provider_errors import (
     format_http_error_message,
     format_rate_limited_message,
 )
+from .status import (
+    AUTH_REJECTED,
+    ERROR_API,
+    ERROR_AUTH,
+    ERROR_BAD_REQUEST,
+    ERROR_CONNECTION,
+    ERROR_NOT_FOUND,
+    ERROR_PERMISSION,
+    ERROR_QUOTA,
+    ERROR_SERVER,
+    ERROR_TIMEOUT,
+    ERROR_UNEXPECTED,
+    async_report_error,
+    async_report_ok,
+)
 
 # Max number of back and forth with the LLM to generate a response
 MAX_TOOL_ITERATIONS = 10
@@ -1868,44 +1883,52 @@ class AiSubscriptionAssistBaseLLMEntity(Entity):
                 # limiting, just with a multi-hour reset window).
                 async_dispatcher_send(self.hass, quota_signal(quota_entry_id), True)
                 LOGGER.warning("Claude quota/rate limit hit: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_QUOTA, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="quota_exceeded"
                 ) from err
             except anthropic.AuthenticationError as err:
                 LOGGER.error("Claude authentication error: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_AUTH, str(err), auth_state=AUTH_REJECTED)
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
                     translation_key="claude_auth_expired",
                 ) from err
             except anthropic.PermissionDeniedError as err:
                 LOGGER.error("Claude permission denied: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_PERMISSION, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
                     translation_key="claude_permission_denied",
                 ) from err
             except anthropic.NotFoundError as err:
                 LOGGER.error("Claude not found error: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_NOT_FOUND, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="claude_not_found"
                 ) from err
             except anthropic.BadRequestError as err:
                 LOGGER.error("Claude bad request: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_BAD_REQUEST, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="claude_bad_request"
                 ) from err
             except anthropic.APITimeoutError as err:
                 LOGGER.error("Claude request timed out: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_TIMEOUT, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN, translation_key="claude_timeout"
                 ) from err
             except anthropic.APIConnectionError as err:
                 LOGGER.error("Claude connection error: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_CONNECTION, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
                     translation_key="claude_connection_error",
                 ) from err
             except anthropic.InternalServerError as err:
                 LOGGER.error("Claude internal server error: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_SERVER, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
                     translation_key="claude_internal_error",
@@ -1914,6 +1937,7 @@ class AiSubscriptionAssistBaseLLMEntity(Entity):
                 LOGGER.error(
                     "Claude API error (status %s): %s", err.status_code, err
                 )
+                async_report_error(self.hass, quota_entry_id, ERROR_API, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
                     translation_key="claude_api_error",
@@ -1921,6 +1945,7 @@ class AiSubscriptionAssistBaseLLMEntity(Entity):
                 ) from err
             except anthropic.AnthropicError as err:
                 LOGGER.error("Unexpected Claude error: %s", err)
+                async_report_error(self.hass, quota_entry_id, ERROR_UNEXPECTED, str(err))
                 raise HomeAssistantError(
                     translation_domain=DOMAIN,
                     translation_key="claude_unexpected_error",
@@ -1929,6 +1954,7 @@ class AiSubscriptionAssistBaseLLMEntity(Entity):
                 # A successful call means the quota is not (or no longer)
                 # exhausted, so clear the flag if it had been set.
                 async_dispatcher_send(self.hass, quota_signal(quota_entry_id), False)
+                async_report_ok(self.hass, quota_entry_id)
 
             if not chat_log.unresponded_tool_results:
                 break

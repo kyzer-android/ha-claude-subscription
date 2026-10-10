@@ -54,8 +54,22 @@ from .memory_service import (
 )
 from .memory_websocket import async_setup_memory_websocket_api
 from .panel import async_setup_memory_panel
+from .status import (
+    AUTH_OK,
+    AUTH_REFRESH_FAILED,
+    ERROR_TOKEN_REFRESH,
+    async_notify_status,
+    async_remove_status,
+    async_report_error,
+    async_get_status,
+)
 
-PLATFORMS = (Platform.CONVERSATION, Platform.BINARY_SENSOR)
+PLATFORMS = (
+    Platform.CONVERSATION,
+    Platform.BINARY_SENSOR,
+    Platform.SENSOR,
+    Platform.BUTTON,
+)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 @dataclass(slots=True)
@@ -168,6 +182,13 @@ async def _async_refresh_token(hass: HomeAssistant, entry: ConfigEntry) -> str |
     refresh_token = entry.data.get(CONF_REFRESH_TOKEN)
     if not refresh_token:
         LOGGER.error("No refresh token available for token refresh")
+        async_report_error(
+            hass,
+            entry.entry_id,
+            ERROR_TOKEN_REFRESH,
+            "No refresh token stored",
+            auth_state=AUTH_REFRESH_FAILED,
+        )
         raise ConfigEntryAuthFailed("No refresh token stored")
 
     try:
@@ -186,13 +207,32 @@ async def _async_refresh_token(hass: HomeAssistant, entry: ConfigEntry) -> str |
     except httpx.HTTPStatusError as err:
         LOGGER.error("Failed to refresh token: %s", err)
         if err.response.status_code in (400, 401, 403):
+            async_report_error(
+                hass,
+                entry.entry_id,
+                ERROR_TOKEN_REFRESH,
+                f"Refresh token rejected (HTTP {err.response.status_code})",
+                auth_state=AUTH_REFRESH_FAILED,
+            )
             raise ConfigEntryAuthFailed(
                 "Claude refresh token rejected by Anthropic "
                 "(revoked, expired, or already used) — reauthentication required"
             ) from err
+        async_report_error(
+            hass,
+            entry.entry_id,
+            ERROR_TOKEN_REFRESH,
+            f"Token refresh failed (HTTP {err.response.status_code})",
+        )
         return None
     except httpx.HTTPError as err:
         LOGGER.error("Failed to refresh token: %s", err)
+        async_report_error(
+            hass,
+            entry.entry_id,
+            ERROR_TOKEN_REFRESH,
+            f"Token refresh failed: {err}",
+        )
         return None
 
     new_data = {**entry.data}
@@ -206,6 +246,12 @@ async def _async_refresh_token(hass: HomeAssistant, entry: ConfigEntry) -> str |
     LOGGER.debug(
         "Successfully refreshed OAuth token, expires in %s seconds", expires_in
     )
+    # A refresh that works means the login is valid again. Only the
+    # authentication state is reset here: the last error may still be a
+    # real quota/API problem and is cleared by the next successful call.
+    status = async_get_status(hass, entry.entry_id)
+    status.auth_state = AUTH_OK
+    async_notify_status(hass, entry.entry_id)
     return token_data["access_token"]
 
 
@@ -664,6 +710,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload AI Subscription Assist."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     async_remove_memory_service_for_entry(hass, entry.entry_id)
+    if unloaded:
+        async_remove_status(hass, entry.entry_id)
     return unloaded
 
 

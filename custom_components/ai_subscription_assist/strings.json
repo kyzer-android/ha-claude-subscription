@@ -46,6 +46,11 @@
           "auth_code": "Redirect URL"
         }
       }
+    },
+    "abort": {
+      "reauth_successful": "Re-authentication successful. The Claude login has been updated.",
+      "reconfigure_successful": "Claude login updated successfully.",
+      "reauth_unsupported_provider": "Re-authentication is only supported for the Claude provider."
     }
   },
   "options": {
@@ -174,6 +179,40 @@
     },
     "claude_unexpected_error": {
       "message": "Unexpected error with Claude."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "auth_state": {
+        "name": "Authentication",
+        "state": {
+          "ok": "Valid",
+          "refresh_failed": "Refresh refused - re-authentication needed",
+          "rejected": "Token rejected - re-authentication needed"
+        }
+      },
+      "last_error": {
+        "name": "Last error",
+        "state": {
+          "none": "None",
+          "quota": "Quota reached",
+          "auth": "Authentication refused",
+          "permission": "Permission denied",
+          "not_found": "Not found",
+          "bad_request": "Invalid request",
+          "timeout": "Timeout",
+          "connection": "Connection error",
+          "server": "Claude server error",
+          "api_error": "API error",
+          "unexpected": "Unexpected error",
+          "token_refresh": "Token refresh failed"
+        }
+      }
+    },
+    "button": {
+      "reauthenticate": {
+        "name": "Re-authenticate"
+      }
     }
   }
 }
