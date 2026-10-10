@@ -4,6 +4,7 @@ import base64
 from collections.abc import AsyncGenerator, Callable, Iterable
 from dataclasses import dataclass, field
 import json
+import logging
 from pathlib import Path
 import time
 
@@ -73,7 +74,7 @@ from anthropic.types import (
 )
 from anthropic.types.message_create_params import MessageCreateParamsStreaming
 import voluptuous as vol
-from voluptuous_openapi import convert
+from voluptuous_openapi import UNSUPPORTED, convert
 
 from homeassistant.components import conversation
 from homeassistant.config_entries import ConfigSubentry
@@ -127,6 +128,8 @@ from .provider_errors import (
 
 # Max number of back and forth with the LLM to generate a response
 MAX_TOOL_ITERATIONS = 10
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _sanitize_claude_schema(
@@ -254,27 +257,54 @@ def _sanitize_claude_schema(
     return schema, note
 
 
+def _normalize_custom_serializer(
+    custom_serializer: Callable[[Any], Any] | None,
+) -> Callable[[Any], Any] | None:
+    """Make HA's custom_serializer's "unsupported" signal match ours.
+
+    Root cause of every tool (not just Selector-bearing ones) failing to
+    convert on HA 2026.9: voluptuous_openapi's convert() only treats a
+    custom_serializer's return value as "this schema isn't a Selector, try
+    something else" when that value `is` *its own* UNSUPPORTED object — an
+    `object()` singleton compared by identity, not by type or equality.
+    HA 2026.9 passes tool.parameters as a `probatio.schema.Schema` instead
+    of a plain `voluptuous.Schema`, and chat_log.llm_api.custom_serializer /
+    llm.selector_serializer is built against a different copy of
+    voluptuous_openapi's UNSUPPORTED than the one this integration's own
+    `voluptuous-openapi` dependency defines. So HA's serializer correctly
+    recognizes "this isn't a Selector" and returns *its* UNSUPPORTED, but
+    convert() sees that this isn't literally *its* UNSUPPORTED object and
+    treats it as a valid result — handing back a meaningless sentinel as
+    the "schema" for every single tool, selectors or not.
+
+    Wrapping the serializer so any non-dict return value is coerced to
+    *this module's* imported `UNSUPPORTED` (the exact object convert()
+    checks against, since it's imported from the same voluptuous_openapi
+    module convert() itself lives in) fixes the identity mismatch. With
+    this, a real selector.SelectSelector (e.g. a script/blueprint field
+    exposed as a tool, which crashed outright here before) converts
+    correctly on the very first pass, and so does everything else — no
+    second "retry without the serializer" call is needed, so there's
+    nothing left that can crash on an unhashable Selector.
+    """
+    if custom_serializer is None:
+        return None
+
+    def _wrapped(schema: Any) -> Any:
+        val = custom_serializer(schema)
+        return val if isinstance(val, dict) else UNSUPPORTED
+
+    return _wrapped
+
+
 def _format_tool(
     tool: llm.Tool, custom_serializer: Callable[[Any], Any] | None
 ) -> ToolParam:
     """Format tool specification."""
-    raw_schema = convert(tool.parameters, custom_serializer=custom_serializer)
-    if not isinstance(raw_schema, dict):
-        # HA's own custom_serializer (meant to render HA-specific Selector
-        # objects) failed on this tool's *entire* top-level schema rather
-        # than on one property, returning the UNSUPPORTED sentinel whole.
-        # Observed for several built-in media_player intents (HassSetVolume,
-        # HassSetVolumeRelative, HassMediaPlayerMute/Unmute,
-        # HassMediaSearchAndPlay) under HA 2026.9's Probatio-backed schema
-        # objects — even though their slot_schema is built from plain
-        # voluptuous primitives (Required, Any, Coerce, Range) that
-        # voluptuous_openapi's own generic conversion handles fine on its
-        # own, the same way it already does for HassTurnOn. So retry
-        # without the HA-specific serializer before giving up on a real
-        # schema: this recovers the actual parameter names/types instead
-        # of falling back to an empty permissive object that leaves the
-        # model guessing what arguments to send.
-        raw_schema = convert(tool.parameters)
+    raw_schema = convert(
+        tool.parameters,
+        custom_serializer=_normalize_custom_serializer(custom_serializer),
+    )
     schema, note = _sanitize_claude_schema(raw_schema)
     description = tool.description or ""
     if note:
@@ -295,7 +325,10 @@ def _format_openai_tool(
         "function": {
             "name": tool.name,
             "description": tool.description or "",
-            "parameters": convert(tool.parameters, custom_serializer=custom_serializer),
+            "parameters": convert(
+                tool.parameters,
+                custom_serializer=_normalize_custom_serializer(custom_serializer),
+            ),
         },
     }
 
@@ -308,7 +341,10 @@ def _format_openai_responses_tool(
         "type": "function",
         "name": tool.name,
         "description": tool.description or "",
-        "parameters": convert(tool.parameters, custom_serializer=custom_serializer),
+        "parameters": convert(
+            tool.parameters,
+            custom_serializer=_normalize_custom_serializer(custom_serializer),
+        ),
         "strict": False,
     }
 
@@ -320,7 +356,10 @@ def _format_gemini_tool(
     return {
         "name": tool.name,
         "description": tool.description or "",
-        "parametersJsonSchema": convert(tool.parameters, custom_serializer=custom_serializer),
+        "parametersJsonSchema": convert(
+            tool.parameters,
+            custom_serializer=_normalize_custom_serializer(custom_serializer),
+        ),
     }
 
 
@@ -1776,14 +1815,12 @@ class AiSubscriptionAssistBaseLLMEntity(Entity):
 
             structure_raw_schema = convert(
                 structure,
-                custom_serializer=chat_log.llm_api.custom_serializer
-                if chat_log.llm_api
-                else llm.selector_serializer,
+                custom_serializer=_normalize_custom_serializer(
+                    chat_log.llm_api.custom_serializer
+                    if chat_log.llm_api
+                    else llm.selector_serializer
+                ),
             )
-            if not isinstance(structure_raw_schema, dict):
-                # Same fallback as _format_tool: retry without the
-                # HA-specific serializer before giving up on a real schema.
-                structure_raw_schema = convert(structure)
             structure_schema, structure_note = _sanitize_claude_schema(
                 structure_raw_schema
             )

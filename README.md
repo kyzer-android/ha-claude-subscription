@@ -50,7 +50,7 @@ Si le bouton ne fonctionne pas (pas d'accès distant configuré, etc.) :
 
 1. Home Assistant → **HACS**
 2. **⋮ (menu en haut à droite) → Custom repositories** (Dépôts personnalisés)
-3. Ajouter l'URL : `https://github.com/kyzer-android/ai-subscription-assist-fr`
+3. Ajouter l'URL : `https://github.com/kyzer-android/ha-claude-subscription`
 4. Catégorie : **Integration**
 5. Installer **AI Subscription Assist** depuis la liste HACS
 6. Redémarrer Home Assistant
@@ -140,7 +140,7 @@ If the button doesn't work (no remote access configured, etc.):
 
 1. Home Assistant → **HACS**
 2. **⋮ (top-right menu) → Custom repositories**
-3. Add the URL: `https://github.com/kyzer-android/ai-subscription-assist-fr`
+3. Add the URL: `https://github.com/kyzer-android/ha-claude-subscription`
 4. Category: **Integration**
 5. Install **AI Subscription Assist** from the HACS list
 6. Restart Home Assistant
